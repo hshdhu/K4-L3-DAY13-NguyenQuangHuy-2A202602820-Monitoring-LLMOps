@@ -4,13 +4,13 @@
 
 ## 1. Thông tin học viên
 
-- **Họ và tên:**
-- **MSSV:**
+- **Họ và tên:** Nguyễn Quang Huy
+- **MSSV:** 2A202602820
 - **Lớp:** K4-L3A
-- **Repository URL:**
+- **Repository URL:** https://github.com/hshdhu/K4-L3-DAY13-NguyenQuangHuy-2A202602820-Monitoring-LLMOps
 - **Commit SHA cuối:**
 - **Challenge ID:**
-- **Tên project Langfuse cá nhân:** `day13-k4-l3a-<MSSV>`
+- **Tên project Langfuse cá nhân:** `day13-k4-l3a-2A202602820`
 
 ## 2. Evidence index
 
@@ -18,6 +18,7 @@
 
 | Evidence | Đường dẫn |
 |---|---|
+| Baseline CP0 | [cp0-baseline.txt](evidence/cp0-baseline.txt) |
 | Pytest cuối | `evidence/01-pytest.png` |
 | Log validator | `evidence/02-log-validator.png` |
 | Dashboard validator | `evidence/03-dashboard-validator.png` |
@@ -37,13 +38,17 @@
 
 | Nội dung | Baseline | Kết quả cuối | Nhận xét |
 |---|---|---|---|
-| `validate_logs.py` | | | |
-| `validate_dashboard.py` | | | |
-| `pytest` | | | |
-| Số traces hợp lệ | | | |
-| Số PII leak | | | |
+| `validate_logs.py` | 30/100; 21 records; 20 thiếu trường bắt buộc; 20 thiếu context; 0 correlation ID hợp lệ | | Correlation ID và log enrichment chưa triển khai ở CP0. |
+| `validate_dashboard.py` | HỢP LỆ: 6/6 panel | | Chỉ xác nhận dashboard contract, chưa xác nhận dashboard runtime. |
+| `pytest` | 22 passed in 1.97s | | Kết quả chạy baseline. |
+| Số traces hợp lệ | Danh sách Langfuse đã xuất hiện 10 dòng root observation `lab-agent-run` | | Chưa đạt tiêu chí trace hoàn chỉnh CP2: correlation ID còn `MISSING`, chưa có child retrieval/generation; chưa ghi trace IDs. |
+| Số PII leak | Validator phát hiện 0 trong 21 records | | Kết quả trên workload baseline; chưa chứng minh toàn bộ pipeline PII đã hoàn thiện. |
 | Latency P95 / TTFT P95 | | | |
 | Retrieval success rate | | | |
+
+Ghi nhận CP0 ngày 29/09/2026, khoảng 18:16–18:17 (UTC+7): API khởi động thành công, load test có 10/10 request trả HTTP 200 và đã tạo `data/logs.jsonl`. Đã kiểm tra `/health`, trả HTTP 200 với `ok: true`. Output baseline được lưu tại [evidence/cp0-baseline.txt](evidence/cp0-baseline.txt).
+
+Langfuse đã nhận root observations của workload. Prompt `day13-chat` với label `production` chưa tìm thấy (404), nên ứng dụng dùng `prompt_source=local-fallback`, `prompt_version=local-v1`; các request vẫn thành công. Prompt versioning sẽ được hoàn thiện ở CP2.
 
 ## 4. Logging và PII
 

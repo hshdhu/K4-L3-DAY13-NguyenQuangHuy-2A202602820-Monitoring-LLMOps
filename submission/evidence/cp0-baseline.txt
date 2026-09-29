@@ -1,0 +1,40 @@
+CP0 — Baseline ngày 29/09/2026
+
+> python scripts/load_test.py
+[200] MISSING | qa | 1821.9ms
+[200] MISSING | qa | 409.6ms
+[200] MISSING | summary | 408.2ms
+[200] MISSING | qa | 412.3ms
+[200] MISSING | qa | 414.7ms
+[200] MISSING | summary | 401.0ms
+[200] MISSING | qa | 399.0ms
+[200] MISSING | qa | 404.6ms
+[200] MISSING | qa | 410.9ms
+[200] MISSING | qa | 424.3ms
+
+> python scripts/validate_logs.py
+--- Lab Verification Results ---
+Total log records analyzed: 21
+Records with missing required fields: 20
+Records with missing enrichment (context): 20
+Unique correlation IDs found: 0
+Potential PII leaks detected: 0
+
+--- Grading Scorecard (Estimates) ---
+- [FAILED] Missing required fields (ts, level, etc.)
+- [FAILED] Correlation ID propagation (less than 2 unique IDs)
+- [FAILED] Log enrichment (missing user_id_hash, etc.)
++ [PASSED] PII scrubbing
+
+Estimated Score: 30/100
+
+> python scripts/validate_dashboard.py
+HỢP LỆ: 6/6 panel có trong dashboard contract.
+
+> python -m pytest -q
+......................                                                                   [100%]
+22 passed in 1.97s
+
+Health check bổ sung trong lượt kiểm tra CP0 sau baseline:
+> Invoke-RestMethod http://127.0.0.1:8000/health
+{"ok":true,"tracing_enabled":true,"incidents":{"rag_slow":false,"tool_fail":false,"cost_spike":false}}
