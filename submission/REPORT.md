@@ -22,8 +22,8 @@
 | Pytest cuối | `evidence/01-pytest.png` |
 | Log validator | `evidence/02-log-validator.png` |
 | Dashboard validator | `evidence/03-dashboard-validator.png` |
-| Structured log | `evidence/04-structured-log.png` |
-| PII redaction | `evidence/05-pii-redaction.png` |
+| Structured log | [04-structured-log.png](evidence/04-structured-log.png) |
+| PII redaction | [05-pii-redaction.png](evidence/05-pii-redaction.png) |
 | Trace list | `evidence/06-trace-list.png` |
 | Trace waterfall | `evidence/07-trace-waterfall.png` |
 | Trace metadata | `evidence/08-trace-metadata.png` |
@@ -52,10 +52,18 @@ Langfuse đã nhận root observations của workload. Prompt `day13-chat` với
 
 ## 4. Logging và PII
 
-- **Cách tạo/nhận và truyền correlation ID:**
-- **Các metadata được ghi vào structured log:**
-- **Cách bảo đảm PII được scrub trước khi ghi:**
-- **Cách kiểm chứng kết quả:**
+- **Cách tạo/nhận và truyền correlation ID:** Middleware xóa context đầu request, nhận `x-request-id` hoặc sinh `req-<8-hex>`, bind vào structlog và lưu trong request state. Response trả cùng ID qua header/body, kèm `x-response-time-ms`; context được dọn trong `finally`.
+- **Các metadata được ghi vào structured log:** Bind `user_id_hash` (SHA-256 rút gọn), `session_id`, `feature`, `model`, `env` trước `request_received`. Các log của request dùng chung correlation ID và context.
+- **Cách bảo đảm PII được scrub trước khi ghi:** `scrub_event` xử lý chuỗi trong các field, dictionary/list lồng nhau; chạy sau formatter exception và trước file writer/JSON renderer. Regex che email, điện thoại Việt Nam, CCCD và số thẻ 16 chữ số (liền, cách hoặc gạch nối).
+- **Cách kiểm chứng kết quả:** Workload CP1 ban đầu có 10/10 HTTP 200, validator 100/100, 10 ID duy nhất, không thiếu field/context và không phát hiện PII; 31 tests passed. Request có ID `req-abcdef12` trả đúng ID trong header/body và thời gian 1221.44 ms.
+
+Kiểm tra bổ sung phát hiện regex thẻ cũ ghép CCCD với nhóm đầu số thẻ khi hai giá trị đứng liền nhau, để sót phần đuôi. Đã sửa regex để nhận số thẻ liền hoặc các nhóm bốn chữ số có dấu phân cách nhất quán, thêm regression test cho cả bốn loại PII trong một chuỗi.
+
+Sau sửa, kiểm tra trực tiếp API lúc khoảng 18:52 ngày 29/09/2026 (UTC+7) cho log preview: `[REDACTED_EMAIL] [REDACTED_PHONE_VN] [REDACTED_CCCD] [REDACTED_CREDIT_CARD]`. Request kiểm tra có correlation ID `req-cp1check`, header thời gian 1872.30 ms. Validator trên 27 records đạt **100/100**, có **12 correlation IDs**, **0 thiếu field/context**, **0 PII leaks được phát hiện**. Tests đạt **32 passed in 2.45s**, gồm kiểm tra context isolation, headers và redaction trước khi ghi file/terminal. Đây là kết quả CP1, chưa thay thế evidence cuối bài; log cũ được giữ nguyên khi kiểm tra.
+
+![Structured log có correlation ID và metadata](evidence/04-structured-log.png)
+
+![Log đã che email, điện thoại Việt Nam, CCCD và thẻ](evidence/05-pii-redaction.png)
 
 ## 5. Tracing và prompt versioning
 
