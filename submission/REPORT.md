@@ -9,7 +9,7 @@
 - **Lớp:** K4-L3A
 - **Repository URL:** https://github.com/hshdhu/K4-L3-DAY13-NguyenQuangHuy-2A202602820-Monitoring-LLMOps
 - **Commit SHA cuối:**
-- **Challenge ID:**
+- **Challenge ID:** `day13-k4-l3a-monitoring-llmops-v1`
 - **Tên project Langfuse cá nhân:** `day13-k4-l3a-2A202602820`
 
 ## 2. Evidence index
@@ -123,14 +123,22 @@ Kiểm tra code CP2: **36 passed in 2.68s**; dashboard validator **6/6**; endpoi
 
 ## 7. Điều tra challenge
 
-- **Challenge ID:**
-- **Khoảng thời gian điều tra:**
-- **Triệu chứng từ metrics:**
-- **Log line và correlation ID liên quan:**
-- **Trace ID và span gây ảnh hưởng:**
-- **Root cause:**
-- **Fix action:**
-- **Preventive measure:**
+- **Challenge ID:** `day13-k4-l3a-monitoring-llmops-v1`
+- **Khoảng thời gian điều tra:** 30/09/2026, từ `04:10:06.6086286` đến `04:10:21.0822607` UTC (11:10:06–11:10:21 UTC+7). Bật incident thành công, `rag_slow=true`, hai incident còn lại tắt; workload challenge chạy concurrency 5.
+- **Triệu chứng từ metrics:** Trước incident, 5/5 request HTTP 200, thời gian phía client 804.2–806.0 ms. Khi bật incident, vẫn 5/5 HTTP 200 nhưng client latency tăng lên 10725.4–13390.6 ms. Đối chiếu 5 log response_sent trong khoảng sự cố: latency_ms 2652–2739 ms, tất cả vượt ngưỡng challenge 2000 ms; TTFT đều 50 ms. Đây là thống kê từ log; cần bổ sung giá trị panel và ảnh metric 12, không nhầm client latency với latency_ms của agent.
+- **Log line và correlation ID liên quan:** Chọn `req-59a0d64f`: `response_sent` tại `2026-09-30T04:10:10.334975Z`, feature `monitoring`, latency_ms `2739`, ttft_ms `50`. Các request còn lại: `req-f4c23716` (2654 ms), `req-2b83decd` (2653 ms), `req-55faffc1` (2652 ms), `req-9fbdcfd1` (2654 ms). Chờ đối chiếu trace cùng correlation ID trước khi chốt root cause.
+- **Trace ID và span gây ảnh hưởng:** `1a222840afb3c95d328f1338377f077d`, cùng correlation ID `req-59a0d64f`. Ảnh 14 xác nhận root khoảng 2.73 s, retrieval chiếm phần lớn thời gian (khoảng 2.5 s trên timeline), generation 233 ms. Trace bắt đầu 11:10:07.599 UTC+7, khớp log kết thúc 04:10:10.334975 UTC; prompt production v1 lấy thành công.
+- **Root cause:** Incident `rag_slow` thêm `time.sleep(2.5)` vào retrieval trong `app/mock_rag.py`. Metric latency tăng, log vượt ngưỡng 2000 ms và waterfall tập trung thời gian ở retrieval cùng chứng minh nguyên nhân. TTFT vẫn 50 ms. Client latency 10.7–13.4 s còn bao gồm chờ xử lý; endpoint async gọi agent đồng bộ có sleep chặn event loop, nên không quy toàn bộ client latency cho một span retrieval.
+- **Fix action:** Đã chạy `python scripts/inject_incident.py --disable`, cả ba incident false, rồi chạy lại cùng challenge với concurrency 5. Cả 5 request HTTP 200, client latency 575.4–888.1 ms. Log lúc 04:18:02 UTC xác nhận latency agent giảm còn 152–154 ms, TTFT 50 ms: `req-81e8fd58` (152), `req-286ca62f` (154), `req-615e4aab` (152), `req-2904a7af` (152), `req-dce0a51d` (152). Đã phục hồi trên workload kiểm tra; không sửa file challenge.
+- **Preventive measure:** Đề xuất timeout và fallback có kiểm soát cho retrieval, theo dõi latency theo span/feature, cảnh báo tail latency kéo dài và kiểm thử tải concurrent. Đưa tác vụ blocking ra thread pool hoặc dùng client async khi triển khai thực tế để giảm chặn event loop. Đây là biện pháp đề xuất, chưa triển khai trong CP3.
+
+Đối chiếu evidence CP3: ảnh 12 ghi cửa sổ 03:12:15–04:12:15 UTC, P50 152 ms, P95/P99 2739 ms, TTFT P95 50 ms. Cửa sổ chứa sự cố; đây là metric 60 phút, không chỉ riêng 5 request challenge. P95 vượt ngưỡng challenge 2000 ms nhưng chưa vượt SLO 3000 ms. Ảnh 13 và 14 khớp correlation ID, session và thời gian. Các yêu cầu đối chiếu nêu ở ghi nhận ban đầu phía trên đã được hoàn thành bằng ba ảnh dưới đây.
+
+![Metric latency trong khoảng sự cố](evidence/12-incident-metric.png)
+
+![Log request chậm](evidence/13-incident-log.png)
+
+![Trace cùng correlation ID, retrieval gây chậm](evidence/14-incident-trace.png)
 
 ## 8. Giải thích và tự đánh giá
 
