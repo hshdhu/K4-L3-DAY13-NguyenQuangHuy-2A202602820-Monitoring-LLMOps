@@ -7,7 +7,13 @@ primary_slo:
     total_event: 'event == "request_received"'
   target_percent: 99.5
   error_budget_percent: 0.5
-  note: Học viên phải giải thích hoặc điều chỉnh ngưỡng bằng baseline của mình.
+  note: >-
+    Giữ ngưỡng 3000 ms: baseline CP0 có latency_ms từ 392 đến 1182 ms
+    trong 10 request thành công; baseline nhỏ chưa đủ kết luận SLO 28 ngày.
+    Good/N >= 0.995, N là số request_received trong 28 ngày;
+    Good là số response_sent có latency_ms <= 3000.
+    Budget cho phép = N * 0.005; đã dùng = N - Good;
+    còn lại = N * 0.005 - (N - Good). Ví dụ 10000 request cho phép 50 bad requests.
 guardrails:
   error_rate_pct_max: 2
   daily_cost_usd_max: 2.5

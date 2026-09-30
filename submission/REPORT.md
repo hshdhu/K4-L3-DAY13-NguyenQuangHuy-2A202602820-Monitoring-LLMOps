@@ -1,6 +1,6 @@
 # Báo cáo cá nhân — K4-L3A Day 13 Monitoring & LLMOps
 
-> Mỗi học viên hoàn thiện một file duy nhất này. Khi dẫn evidence, dùng đường dẫn tương đối, ví dụ `evidence/07-trace-waterfall.png`.
+> Mỗi học viên hoàn thiện một file duy nhất này. Khi dẫn evidence, dùng đường dẫn tương đối, ví dụ [07-trace-waterfall.png](evidence/07-trace-waterfall.png).
 
 ## 1. Thông tin học viên
 
@@ -24,12 +24,12 @@
 | Dashboard validator | `evidence/03-dashboard-validator.png` |
 | Structured log | [04-structured-log.png](evidence/04-structured-log.png) |
 | PII redaction | [05-pii-redaction.png](evidence/05-pii-redaction.png) |
-| Trace list | `evidence/06-trace-list.png` |
-| Trace waterfall | `evidence/07-trace-waterfall.png` |
-| Trace metadata | `evidence/08-trace-metadata.png` |
-| Prompt versions | `evidence/09-prompt-versions.png` |
-| Prompt rollback | `evidence/10-prompt-rollback.png` |
-| Dashboard runtime | `evidence/11-dashboard-overview.png` |
+| Trace list | [06-trace-list.png](evidence/06-trace-list.png) |
+| Trace waterfall | [07-trace-waterfall.png](evidence/07-trace-waterfall.png) |
+| Trace metadata | [08-trace-metadata.png](evidence/08-trace-metadata.png) |
+| Prompt versions | [09-prompt-versions.png](evidence/09-prompt-versions.png) |
+| Prompt rollback | [Promote v2](evidence/10a-production-v2.png), [Rollback v1](evidence/10b-rollback-v1.png) |
+| Dashboard runtime | [Dashboard 11a](evidence/11a-dashboard-overview.png), [Dashboard 11b](evidence/11b-dashboard-overview.png) |
 | Incident metric | `evidence/12-incident-metric.png` |
 | Incident log | `evidence/13-incident-log.png` |
 | Incident trace | `evidence/14-incident-trace.png` |
@@ -68,20 +68,58 @@ Sau sửa, kiểm tra trực tiếp API lúc khoảng 18:52 ngày 29/09/2026 (UT
 ## 5. Tracing và prompt versioning
 
 - **Cách xác nhận traces do chính tôi tạo trong project cá nhân:**
-- **Cấu trúc root/retrieval/generation observations:**
-- **Cách nối trace với log:**
-- **Prompt name:**
-- **Version/label baseline:**
-- **Version/label candidate:**
-- **Trace ID của mỗi version:**
-- **Cách promote và rollback `production`:**
+- **Cấu trúc root/retrieval/generation observations:** Root `lab-agent-run` (agent) chứa `retrieval` (retriever) và `fake-llm` (generation). Cả ba tắt capture tự động input/output. Generation ghi model, preview đã scrub, usage input/output, cost mô phỏng và thời điểm token đầu tiên; kế thừa managed prompt từ `propagate_attributes`.
+- **Cách nối trace với log:** Tìm `correlation_id` của log trong trace metadata; trace có user ID đã hash, session, feature, model và environment. Tests kiểm tra quan hệ cha-con và không capture email thô.
+- **Prompt name:** `day13-chat`; lấy theo label trong `.env`, có local fallback khi fetch lỗi. Fallback không được coi là evidence versioning.
+- **Version/label baseline:** Đã đặt `LANGFUSE_PROMPT_LABEL=baseline` và chạy workload, 10/10 request HTTP 200. Nội dung observations trên Langfuse ngày 30/09/2026 xác nhận 8 request dùng `prompt_source=langfuse`, `prompt_name=day13-chat`, `prompt_label=baseline`, `prompt_version=1`, không có prompt fetch error. Hai request đầu (`req-3886df53`, `req-4400b3c5`) dùng `local-fallback` / `local-v1` với `LangfuseFallback`, không tính là evidence dùng managed prompt v1.
+- **Version/label candidate:** Đã chạy cùng workload với label `candidate`, 10/10 request HTTP 200. Observations ngày 30/09/2026 xác nhận cả 10 request dùng `prompt_source=langfuse`, `prompt_label=candidate`, `prompt_version=2`, không có prompt fetch error. Generation liên kết `day13-chat (v2)`.
+- **Trace ID của mỗi version:** Baseline v1 (label `baseline`): `31da365acaee3884ce2a253bce284e91`, tương ứng correlation ID `req-ed0a7914`. Candidate v2 (label `candidate`): `b20d564a8635caf9e426d493a2f9f781`, tương ứng correlation ID `req-c6898306`.
+- **Cách promote và rollback `production`:** Đã xác nhận promote: 10 request trong observations ngày 30/09/2026 dùng `prompt_source=langfuse`, `prompt_label=production`, `prompt_version=2`, không có prompt fetch error. Request mẫu: `req-66657a04`, Trace ID `8be03701c6e942bfd6e263b1b4bead83`; cần bổ sung ảnh `10a-production-v2.png`. Trace ID rollback do học viên cung cấp: `76f0ffc06ef4b21a465e41699a4b797a`; cần đối chiếu metadata `prompt_source=langfuse`, `prompt_label=production`, `prompt_version=1` và bổ sung ảnh `10b-rollback-v1.png`.
+
+Kết quả workload khi cấu hình label `baseline` (output terminal):
+
+| Correlation ID | Feature | HTTP | Thời gian phía client (ms) |
+|---|---|---|---:|
+| `req-3886df53` | qa | 200 | 8774.2 |
+| `req-4400b3c5` | qa | 200 | 2505.1 |
+| `req-f3bbfeb7` | summary | 200 | 1522.6 |
+| `req-408a4983` | qa | 200 | 158.4 |
+| `req-ccb63cc3` | qa | 200 | 161.3 |
+| `req-7b94fc80` | summary | 200 | 159.7 |
+| `req-57a50c89` | qa | 200 | 159.2 |
+| `req-82b17366` | qa | 200 | 156.7 |
+| `req-5414c283` | qa | 200 | 158.5 |
+| `req-ed0a7914` | qa | 200 | 159.9 |
+
+Ba request đầu chậm hơn bảy request sau (156.7–161.3 ms). Hai request đầu có lỗi fetch prompt và dùng fallback; chưa xác định nguyên nhân lỗi fetch hoặc toàn bộ thời gian chờ, cần đối chiếu log/waterfall. Thời gian trên là thời gian HTTP phía client, không phải trực tiếp `response_sent.latency_ms` dùng trong dashboard/SLO.
+
+Request `req-ed0a7914` có các observations `lab-agent-run`, `retrieval` và `fake-llm` cùng correlation ID; generation liên kết `day13-chat (v1)`, model `claude-sonnet-4-5`, cost mô phỏng 0.002394 USD, TTFT 0.05 s và duration hiển thị 0.15 s. Cần mở waterfall để xác nhận quan hệ cha-con và lấy Trace ID; danh sách observations không thay thế ảnh waterfall.
+
+Kết quả workload label `candidate` (output terminal):
+
+| Correlation ID | Feature | HTTP | Thời gian phía client (ms) |
+|---|---|---|---:|
+| `req-06ff1cd3` | qa | 200 | 2004.1 |
+| `req-0adb0693` | qa | 200 | 158.2 |
+| `req-21116b45` | summary | 200 | 158.0 |
+| `req-025bb57c` | qa | 200 | 157.6 |
+| `req-dd8154d6` | qa | 200 | 160.0 |
+| `req-832bac19` | summary | 200 | 158.5 |
+| `req-27e56308` | qa | 200 | 158.3 |
+| `req-9923cde5` | qa | 200 | 156.1 |
+| `req-91110ba8` | qa | 200 | 157.8 |
+| `req-c6898306` | qa | 200 | 160.2 |
+
+Request `req-c6898306` có generation hiển thị model `claude-sonnet-4-5`, duration 0.15 s, TTFT 0.05 s, cost mô phỏng 0.001563 USD và liên kết prompt v2. Request đầu chậm hơn các request sau; chưa kết luận v2 cải thiện latency so với v1 vì hai lần chạy có trạng thái fetch/cache khác nhau. Promote đã được xác nhận ở mục trên; rollback và ảnh runtime CP2 còn cần bổ sung.
 
 ## 6. Dashboard, SLO và alerts
 
-- **Dashboard và sáu panel:**
-- **SLO và lý do chọn:**
-- **Cách tính error budget:**
-- **Ba alert và runbook tương ứng:**
+- **Dashboard và sáu panel:** Mở `/dashboard` trên API. Nguồn `data/logs.jsonl`, cửa sổ 60 phút UTC, refresh 30 giây; gồm latency P50/P95/P99 và TTFT P95, traffic, error rate/breakdown/retrieval success, cost, input/output tokens, quality proxy. Mỗi panel có đơn vị và threshold từ contract. Retrieval success tính trên cả response thành công và request lỗi; dữ liệu không có mẫu hiển thị N/A. Cost/token là mô phỏng, quality là heuristic. Hướng dẫn tại [DASHBOARD_SETUP.md](../docs/DASHBOARD_SETUP.md).
+- **SLO và lý do chọn:** [slo.yaml](../config/slo.yaml): 99.5% request thành công trong 3000 ms trên 28 ngày. Baseline CP0 có latency 392–1182 ms trong 10 request, nên giữ ngưỡng lab 3000 ms; mẫu nhỏ chưa chứng minh SLO dài hạn.
+- **Cách tính error budget:** N = số request_received; Good = số response_sent có latency_ms <= 3000. Budget = 0.005 × N; đã dùng = N − Good; còn lại = 0.005 × N − (N − Good). Ví dụ minh họa 10000 request cho phép 50 request không đạt, không phải số liệu thực tế của lab.
+- **Ba alert và runbook tương ứng:** [alert_rules.yaml](../config/alert_rules.yaml) và [alerts.md](../docs/alerts.md): P95 > 3000 ms, error rate > 2%, cost ngày > 2.5 USD; mỗi rule có duration 5m, severity, owner và kênh Slack dự kiến. Đây là đặc tả, chưa triển khai evaluator/gửi Slack. Cost ngày và cost cửa sổ dashboard 60 phút là hai phép tính khác nhau.
+
+Kiểm tra code CP2: **36 passed in 2.68s**; dashboard validator **6/6**; endpoint `/dashboard` trả **HTTP 200** với **6 panel**. Log validator trên file hiện tại **100/100**, 35 records, 12 correlation IDs, không thiếu field/context và không phát hiện PII. Kết quả này chưa chứng minh traces/prompt versions trên Cloud hoặc rollback; cần bổ sung trace IDs và evidence 06–11 sau khi chạy workload, promote/rollback và kiểm tra dashboard thực tế. Chưa điền kết quả cuối bài vào bảng baseline.
 
 ## 7. Điều tra challenge
 

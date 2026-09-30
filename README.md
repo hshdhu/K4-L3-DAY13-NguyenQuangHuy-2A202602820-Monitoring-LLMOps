@@ -85,6 +85,10 @@ python -m pytest -q
 
 Baseline log chưa đạt là bình thường vì các `TODO` của CP1 chưa được làm. Ghi lại kết quả baseline vào `submission/REPORT.md` trước khi sửa.
 
+Dashboard CP2: khi API đang chạy, mở `http://127.0.0.1:8000/dashboard`.
+Trang đọc log trong 60 phút gần nhất và refresh mỗi 30 giây; chạy load test
+để có dữ liệu mới. Không cần cài thêm thư viện. Xem `docs/DASHBOARD_SETUP.md`.
+
 ## Lộ trình 14:00–18:00 (240 phút)
 
 | Mốc | Thời gian | Việc chính | Hoàn thành khi |

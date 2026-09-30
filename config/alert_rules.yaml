@@ -1,25 +1,28 @@
 alerts:
-  - name: TODO_alert_1
-    severity: TODO
-    condition: TODO
-    duration: TODO
+  - name: high_request_latency
+    severity: warning
+    condition: 'count(response_sent, 5m) >= 10 AND p95(response_sent.latency_ms, 5m) > 3000'
+    duration: 5m
     type: symptom-based
     channel: slack
-    owner: TODO
+    slack_channel: '#day13-k4-l3a-monitoring'
+    owner: NguyenQuangHuy
     runbook: docs/alerts.md#alert-1
-  - name: TODO_alert_2
-    severity: TODO
-    condition: TODO
-    duration: TODO
+  - name: high_request_error_rate
+    severity: critical
+    condition: 'count(request_received, 5m) >= 10 AND count(request_failed, 5m) / count(request_received, 5m) * 100 > 2'
+    duration: 5m
     type: symptom-based
     channel: slack
-    owner: TODO
+    slack_channel: '#day13-k4-l3a-monitoring'
+    owner: NguyenQuangHuy
     runbook: docs/alerts.md#alert-2
-  - name: TODO_alert_3
-    severity: TODO
-    condition: TODO
-    duration: TODO
+  - name: daily_cost_budget_exceeded
+    severity: warning
+    condition: 'sum(response_sent.cost_usd, since 00:00 Asia/Ho_Chi_Minh) > 2.5'
+    duration: 5m
     type: symptom-based
     channel: slack
-    owner: TODO
+    slack_channel: '#day13-k4-l3a-monitoring'
+    owner: NguyenQuangHuy
     runbook: docs/alerts.md#alert-3

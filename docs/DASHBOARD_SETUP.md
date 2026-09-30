@@ -19,6 +19,16 @@ Giữ time range mặc định 60 phút, refresh 30 giây và hiển thị thres
 
 ## Cách dựng
 
+Repo đã có dashboard FastAPI tại `http://127.0.0.1:8000/dashboard`.
+Chạy API theo README rồi chạy `python scripts/load_test.py` và mở URL trên.
+Không cần cài thêm thư viện. Trang đọc `data/logs.jsonl`, lọc 60 phút gần nhất,
+refresh 30 giây và hiển thị 6 panel với threshold lấy từ YAML.
+Thời gian trên dashboard là UTC; giờ Việt Nam = UTC+7. Không có mẫu thì latency,
+quality và tỷ lệ hiển thị N/A, không giả định bằng 0. Cost và token là mô phỏng.
+Panel errors tính retrieval success trên cả `response_sent` và `request_failed`
+có `tool_name=retrieval`, `tool_success` khác null; không lọc bỏ response thành công.
+Cost có cả USD/phút và tổng tích lũy cửa sổ; tokens là tổng tích lũy input/output.
+
 1. Hoàn thiện logging/PII và chạy API.
 2. Chạy `python scripts/load_test.py --concurrency 5` để tạo baseline.
 3. Dùng `data/logs.jsonl` làm nguồn chuẩn để tạo đúng sáu panel bằng Streamlit, notebook, Grafana hoặc công cụ tương đương. Langfuse vẫn là nơi mở trace/prompt version để điều tra sâu.
